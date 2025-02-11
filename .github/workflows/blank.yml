@@ -1,0 +1,46 @@
+name: Sync Migrations from Test to Demo
+
+on:
+  push:
+    branches:
+      - test  # Se ejecuta cuando hay un push en la rama "test"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      # Clonamos el repositorio
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Necesario para comparar entre ramas
+
+      # Configurar Git
+      - name: Configure Git user
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      # Creamos una rama temporal basada en "demo"
+      - name: Switch to demo branch
+        run: |
+          git checkout demo
+
+      # Copiamos solo los archivos nuevos o modificados desde "test/migrations" a "demo/migrations"
+      - name: Sync migrations folder
+        run: |
+          rsync -av --ignore-existing test/migrations/ demo/migrations/
+
+      # Verificamos si hay cambios en la rama "demo"
+      - name: Commit and push changes
+        run: |
+          git add .
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Sync new migration files from test to demo"
+            git push origin demo
+          fi
